@@ -45,7 +45,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:#fbf9f5;border:1px sol
 <header>
   <div class="brand">Giraffos · Agent IOS</div>
   <h1>Configura tu Agente</h1>
-  <p class="sub">Completa la información de tu negocio (≈15 min). Al final, presiona <b>Generar</b>, descarga el archivo y envíalo a Giraffos.</p>
+  <p class="sub">Completa la información de tu negocio (≈15 min). Al final, presiona <b>Generar</b>, descarga el <b>.zip</b> y envíalo a Giraffos.</p>
 </header>
 
 <section>
@@ -110,12 +110,12 @@ pre{white-space:pre-wrap;word-break:break-word;background:#fbf9f5;border:1px sol
 <div class="actions">
   <button type="button" class="btn gold" onclick="generar()">Generar configuración</button>
   <button type="button" class="btn ghost" onclick="copiar()">Copiar</button>
-  <button type="button" class="btn" onclick="descargar()">Descargar archivo</button>
+  <button type="button" class="btn" onclick="descargarZip()">Descargar (.zip)</button>
 </div>
 
 <section id="out" style="display:none">
   <h2>Vista previa</h2>
-  <p class="hint">Esto es lo que se carga en tu agente. Descárgalo y envíalo a Giraffos.</p>
+  <p class="hint">Esto es lo que se carga en tu agente. Descarga el <b>.zip</b> y envíalo a Giraffos.</p>
   <pre id="preview" tabindex="0" aria-label="Vista previa de la configuración generada"></pre>
 </section>
 
@@ -139,28 +139,45 @@ function addSvc(){
 }
 addSvc();addSvc();
 function v(id){return (document.getElementById(id).value||'').trim();}
-function build(){
-  var nombre=v('nombre')||'(negocio)';
-  var svc='| Tratamiento | Precio | Duración | Notas |\n|---|---|---|---|\n';
+function slug(s){return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'cliente';}
+function svcTable(){
+  var t='| Tratamiento | Precio | Duración | Notas |\n|---|---|---|---|\n';
   document.querySelectorAll('#svcList .svc').forEach(function(r){
     var i=r.querySelectorAll('input');
-    if(i[0].value.trim()){svc+='| '+i[0].value+' | '+(i[1].value||'')+' | '+(i[2].value||'')+' | '+(i[3].value||'')+' |\n';}
+    if(i[0].value.trim()){t+='| '+i[0].value+' | '+(i[1].value||'')+' | '+(i[2].value||'')+' | '+(i[3].value||'')+' |\n';}
   });
-  return '# Configuración del Agente — '+nombre+'\n'
-   +'(Generado desde la interfaz de Giraffos. Pegar cada sección en el archivo cliente/ correspondiente.)\n\n'
-   +'===== cliente/about.md =====\n# '+nombre+'\n- Rubro: '+v('rubro')+'\n- Web/IG: '+v('web')+'\n- Tratamientos: '+v('tratamientos')+'\n\n'
-   +'===== cliente/marca-voz.md =====\n# Marca y voz — '+nombre+'\n- Paleta: '+v('colores')+'\n- Tipografía: '+v('tipografia')+'\n- Tono: '+v('tono')+'\n\n'
-   +'===== cliente/servicios-precios.md =====\n# Servicios y precios — '+nombre+'\n'+svc+'\nCondiciones: '+v('condiciones')+'\n\n'
-   +'===== cliente/plantillas/consentimiento.md =====\n'+(v('consent')||'(PENDIENTE)')+'\n\n'
-   +'===== cliente/plantillas/pre-operatorias.md =====\n'+(v('preop')||'(PENDIENTE)')+'\n\n'
-   +'===== cliente/plantillas/reglas-devolucion.md =====\n'+(v('devol')||'(PENDIENTE)')+'\n\n'
-   +'===== cliente/conexiones.md =====\n# Conexiones — '+nombre+'\n- WhatsApp: '+v('wsp')+'\n- Google Calendar: '+v('cal')+'\n- CRM: '+v('crm')+'\n- Email: '+v('mail')+'\n';
+  return t;
 }
+function sections(){
+  var n=v('nombre')||'(negocio)';
+  var P='<<NO_CARGADO>> — pendiente: la clínica debe entregar este contenido real. El agente NO debe inventarlo.';
+  return [
+    {name:'cliente/about.md',content:'# '+n+'\n- Rubro: '+v('rubro')+'\n- Web/IG: '+v('web')+'\n- Tratamientos: '+v('tratamientos')+'\n'},
+    {name:'cliente/marca-voz.md',content:'# Marca y voz — '+n+'\n- Paleta: '+v('colores')+'\n- Tipografía: '+v('tipografia')+'\n- Tono: '+v('tono')+'\n'},
+    {name:'cliente/servicios-precios.md',content:'# Servicios y precios — '+n+'\n'+svcTable()+'\nCondiciones: '+(v('condiciones')||P)+'\n'},
+    {name:'cliente/plantillas/consentimiento.md',content:(v('consent')||P)+'\n'},
+    {name:'cliente/plantillas/pre-operatorias.md',content:(v('preop')||P)+'\n'},
+    {name:'cliente/plantillas/reglas-devolucion.md',content:(v('devol')||P)+'\n'},
+    {name:'cliente/conexiones.md',content:'# Conexiones — '+n+'\n- WhatsApp: '+v('wsp')+'\n- Google Calendar: '+v('cal')+'\n- CRM: '+v('crm')+'\n- Email: '+v('mail')+'\n'}
+  ];
+}
+function build(){return '# Configuración del Agente — '+(v('nombre')||'(negocio)')+'\n(Generado desde la interfaz de Giraffos. Cada bloque va a su archivo cliente/.)\n\n'+sections().map(function(f){return '===== '+f.name+' =====\n'+f.content;}).join('\n');}
 var last='';
 function showToast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2200);}
 function generar(){last=build();document.getElementById('preview').textContent=last;var o=document.getElementById('out');o.style.display='block';o.scrollIntoView({behavior:'smooth'});showToast('Configuración generada ✓');}
 function copiar(){if(!last)generar();navigator.clipboard.writeText(last).then(function(){showToast('Copiado al portapapeles ✓');});}
-function descargar(){if(!last)generar();var b=new Blob([last],{type:'text/markdown'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='configuracion-agente.md';a.click();showToast('Archivo descargado ✓');}
+function crc32(buf){var t=crc32.t;if(!t){t=crc32.t=[];for(var n=0;n<256;n++){var c=n;for(var k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}}var crc=-1;for(var i=0;i<buf.length;i++)crc=(crc>>>8)^t[(crc^buf[i])&255];return(crc^-1)>>>0;}
+function makeZip(files){var enc=new TextEncoder(),chunks=[],central=[],offset=0;
+  var u16=function(n){return new Uint8Array([n&255,(n>>8)&255]);},u32=function(n){return new Uint8Array([n&255,(n>>8)&255,(n>>16)&255,(n>>24)&255]);},push=function(a){chunks.push(a);offset+=a.length;};
+  files.forEach(function(f){var nb=enc.encode(f.name),data=enc.encode(f.content),crc=crc32(data),size=data.length,lo=offset;
+    push(u32(0x04034b50));push(u16(20));push(u16(0));push(u16(0));push(u16(0));push(u16(0));push(u32(crc));push(u32(size));push(u32(size));push(u16(nb.length));push(u16(0));push(nb);push(data);
+    central.push({nb:nb,crc:crc,size:size,lo:lo});});
+  var cdStart=offset;
+  central.forEach(function(c){push(u32(0x02014b50));push(u16(20));push(u16(20));push(u16(0));push(u16(0));push(u16(0));push(u16(0));push(u32(c.crc));push(u32(c.size));push(u32(c.size));push(u16(c.nb.length));push(u16(0));push(u16(0));push(u16(0));push(u16(0));push(u32(0));push(u32(c.lo));push(c.nb);});
+  var cdSize=offset-cdStart;
+  push(u32(0x06054b50));push(u16(0));push(u16(0));push(u16(central.length));push(u16(central.length));push(u32(cdSize));push(u32(cdStart));push(u16(0));
+  var total=chunks.reduce(function(a,c){return a+c.length;},0),out=new Uint8Array(total),p=0;chunks.forEach(function(c){out.set(c,p);p+=c.length;});return out;}
+function descargarZip(){var z=makeZip(sections());var b=new Blob([z],{type:'application/zip'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='configuracion-'+slug(v('nombre'))+'.zip';a.click();showToast('ZIP descargado ✓');}
 </script>
 </body>
 </html>
